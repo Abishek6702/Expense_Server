@@ -6,7 +6,6 @@ import renderTemplate from "../utils/renderTemplate.js";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 
-
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const googleAuth = async (req, res) => {
@@ -40,11 +39,9 @@ export const googleAuth = async (req, res) => {
       });
     }
 
-    const appToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const appToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     res.status(200).json({
       token: appToken,
@@ -60,8 +57,6 @@ export const googleAuth = async (req, res) => {
     res.status(500).json({ message: "Google authentication failed" });
   }
 };
-
-
 
 export const registerUser = async (req, res) => {
   try {
@@ -105,6 +100,13 @@ export const loginUser = async (req, res) => {
     if (!user) {
       res.status(400).json({ message: "Invalid email" });
     }
+    if (user.authProvider === "google") {
+      return res.status(400).json({
+        message:
+          "This email is registered with Google. Please sign in using Google.",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid password" });
@@ -127,6 +129,14 @@ export const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       res.status(404).json({ message: "User dosen't exist" });
+    }
+    if (user.authProvider === "google") {
+      return res
+        .status(400)
+        .json({
+          message:
+            "This account uses Google Sign-In. Password reset is not available.",
+        });
     }
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
